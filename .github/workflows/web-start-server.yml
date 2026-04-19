@@ -1,0 +1,58 @@
+name: Web Server Start Check
+
+on:
+  workflow_dispatch:
+
+jobs:
+  web-start-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web dist
+        run: npm run build:web:dist
+
+      - name: Start website server
+        run: |
+          npm run serve:web:dist > web-server.log 2>&1 &
+          echo $! > web-server.pid
+          sleep 2
+
+      - name: Health check
+        run: |
+          for attempt in {1..20}; do
+            if curl -fsS http://127.0.0.1:4173 > /dev/null; then
+              echo "Website server is healthy."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Website server health check failed."
+          cat web-server.log
+          exit 1
+
+      - name: Stop website server
+        if: always()
+        run: |
+          if [ -f web-server.pid ]; then
+            kill "$(cat web-server.pid)" || true
+          fi
+
+      - name: Upload server log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-server-log
+          path: web-server.log
+          if-no-files-found: error

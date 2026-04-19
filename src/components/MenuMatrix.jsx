@@ -1,71 +1,179 @@
 import React from 'react';
-import LiquidGlassCard from './LiquidGlassCard';
+import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import LiquidButton from './LiquidButton';
+import LiquidGlassCard from './LiquidGlassCard';
 import { useCart } from '../context/CartContext';
-import { menuItems } from '../data/menu';
+import { getMenuByCategory } from '../data/menu';
+import { palette, radius, spacing } from '../theme';
 
-const MenuMatrix = ({ activeCategory }) => {
+function MenuMatrix({ activeCategory }) {
+  const { width } = useWindowDimensions();
   const { cart, addToCart, incrementQuantity, decrementQuantity, removeFromCart } = useCart();
-  
-  const filteredItems = activeCategory === 'ALL' 
-    ? menuItems 
-    : menuItems.filter(item => item.category === activeCategory);
+
+  const filteredItems = getMenuByCategory(activeCategory);
+
+  let columns = 1;
+  if (width >= 1200) columns = 4;
+  else if (width >= 850) columns = 3;
+  else if (width >= 520) columns = 2;
+
+  const cardWidth = columns === 1 ? '100%' : `${100 / columns - 2}%`;
 
   return (
-    <div>
-      <h2 className="section-title">
+    <View style={styles.wrapper}>
+      <Text style={styles.sectionTitle}>
         {activeCategory === 'ALL' ? 'Our Signature Delights' : activeCategory}
-      </h2>
-      <div className="product-grid">
-        {filteredItems.map(item => (
-          <LiquidGlassCard key={item.id} className="product-card">
-            <div className="product-image" style={{ background: item.image ? 'transparent' : 'rgba(0,0,0,0.05)', padding: item.image ? '0' : '16px' }}>
-              {item.image ? (
-                <img src={item.image} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px', mixBlendMode: 'multiply' }} />
-              ) : (
-                item.isVegetarian ? '🥬' : '🍗'
-              )}
-            </div>
-            <div className="product-info">
-              <div style={{display: 'flex', justifyContent: 'space-between'}}>
-                <span style={{color: '#EAB308', fontSize: '10px'}}>★★★★★</span>
-                <span style={{fontSize: '10px', background: 'rgba(255,255,255,0.4)', padding: '2px 6px', borderRadius: '4px'}}>Fresh Daily</span>
-              </div>
-              <h3 style={{marginTop: '8px'}}>{item.name}</h3>
-              <p>{item.description}</p>
-            </div>
-            <div className="product-footer">
-              <span className="product-price">Rs. {item.price}/-</span>
-              {(() => {
-                const cartItem = cart.find(ci => ci.product.id === item.id);
-                if (cartItem) {
-                  return (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.1)', padding: '4px 8px', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.2)' }}>
-                      <button 
-                        onClick={() => cartItem.quantity > 1 ? decrementQuantity(item.id) : removeFromCart(item.id)}
-                        style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', border: 'none', cursor: 'pointer', color: 'white', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      >-</button>
-                      <span style={{ fontWeight: 'bold', fontSize: '14px', width: '20px', textAlign: 'center' }}>{cartItem.quantity}</span>
-                      <button 
-                        onClick={() => incrementQuantity(item.id)}
-                        style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--accent-purple)', border: 'none', cursor: 'pointer', color: 'white', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      >+</button>
-                    </div>
-                  );
-                } else {
-                  return (
-                    <LiquidButton onClick={() => addToCart(item)} style={{padding: '6px 12px', fontSize: '12px'}}>
-                      ADD <span style={{fontWeight: 'bold', marginLeft: '4px'}}>+</span>
-                    </LiquidButton>
-                  );
-                }
-              })()}
-            </div>
-          </LiquidGlassCard>
-        ))}
-      </div>
-    </div>
+      </Text>
+
+      <View style={styles.grid}>
+        {filteredItems.map((item) => {
+          const cartItem = cart.find((entry) => entry.product.id === item.id);
+
+          return (
+            <LiquidGlassCard key={item.id} style={[styles.card, { width: cardWidth }]}>
+              <Image source={item.image} style={styles.image} resizeMode="cover" />
+
+              <View style={styles.cardBody}>
+                <Text style={styles.itemName}>{item.name}</Text>
+                <Text style={styles.itemDescription}>{item.description}</Text>
+
+                <View style={styles.priceRow}>
+                  <Text style={styles.itemPrice}>Rs. {item.price}/-</Text>
+                  <Text style={styles.itemTag}>{item.isVegetarian ? 'Veg' : 'Non-Veg'}</Text>
+                </View>
+
+                {cartItem ? (
+                  <View style={styles.quantityWrap}>
+                    <Pressable
+                      onPress={() =>
+                        cartItem.quantity > 1
+                          ? decrementQuantity(item.id)
+                          : removeFromCart(item.id)
+                      }
+                      style={styles.quantityButton}
+                    >
+                      <Text style={styles.quantityText}>-</Text>
+                    </Pressable>
+
+                    <Text testID={`quantity-${item.id}`} style={styles.quantityCount}>
+                      {cartItem.quantity}
+                    </Text>
+
+                    <Pressable
+                      onPress={() => incrementQuantity(item.id)}
+                      style={styles.quantityButton}
+                    >
+                      <Text style={styles.quantityText}>+</Text>
+                    </Pressable>
+                  </View>
+                ) : (
+                  <LiquidButton
+                    testID={`add-button-${item.id}`}
+                    onPress={() => addToCart(item)}
+                    style={styles.addButton}
+                  >
+                    ADD +
+                  </LiquidButton>
+                )}
+              </View>
+            </LiquidGlassCard>
+          );
+        })}
+      </View>
+    </View>
   );
-};
+}
+
+const styles = StyleSheet.create({
+  wrapper: {
+    gap: spacing.md,
+  },
+  sectionTitle: {
+    color: palette.textPrimary,
+    fontWeight: '800',
+    fontSize: 24,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: spacing.md,
+  },
+  card: {
+    overflow: 'hidden',
+  },
+  image: {
+    width: '100%',
+    height: 140,
+    backgroundColor: palette.elevated,
+  },
+  cardBody: {
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  itemName: {
+    color: palette.textPrimary,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  itemDescription: {
+    color: palette.textSecondary,
+    fontSize: 12,
+    lineHeight: 18,
+    minHeight: 36,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  itemPrice: {
+    color: palette.textPrimary,
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  itemTag: {
+    color: palette.textSecondary,
+    fontSize: 11,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: palette.border,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+  },
+  addButton: {
+    marginTop: 2,
+  },
+  quantityWrap: {
+    marginTop: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  quantityButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: palette.elevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quantityText: {
+    color: palette.textPrimary,
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 19,
+  },
+  quantityCount: {
+    color: palette.textPrimary,
+    fontSize: 14,
+    fontWeight: '800',
+    minWidth: 20,
+    textAlign: 'center',
+  },
+});
 
 export default MenuMatrix;

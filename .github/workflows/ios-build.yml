@@ -1,0 +1,42 @@
+name: iOS Build (Stub)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Build mode
+        required: true
+        type: choice
+        default: testing
+        options:
+          - testing
+          - distribution
+
+jobs:
+  ios-build-stub:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run iOS stub build
+        run: |
+          mkdir -p artifacts
+          STUB_LOG_PATH="artifacts/ios-${{ github.event.inputs.mode }}-stub.log" npm run "build:ios:${{ github.event.inputs.mode }}"
+
+      - name: Upload iOS stub log
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-stub-${{ github.event.inputs.mode }}
+          path: artifacts/ios-${{ github.event.inputs.mode }}-stub.log
+          if-no-files-found: error

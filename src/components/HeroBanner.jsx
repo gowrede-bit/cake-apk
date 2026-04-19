@@ -1,61 +1,188 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import { heroItems } from '../data/menu';
+import { palette, radius, spacing } from '../theme';
 
-const heroItems = [
-  { img: '/src/assets/truffle_cake.png', alt: 'Chocolate Truffle Cake', label: 'Chocolate Truffle Cake' },
-  { img: '/src/assets/croissant.png', alt: 'Freshly Baked Croissant', label: 'Freshly Baked Croissant' },
-  { img: '/src/assets/black_forest_cake.png', alt: 'Black Forest Cake', label: 'Black Forest Cake' },
-  { img: '/src/assets/celebration_cake.png', alt: 'Celebration Cake', label: 'Celebration Cake' },
-  { img: '/src/assets/chicken_frankie.png', alt: 'Chicken Frankie', label: 'Chicken Frankie' },
-  { img: '/src/assets/sweet_corn_pizza.png', alt: 'Sweet Corn Pizza', label: 'Sweet Corn Pizza' },
-  { img: '/src/assets/puff_selection.png', alt: 'Puff Selection', label: 'Puff Selection' },
-  { img: '/src/assets/shake_flight.png', alt: 'Shake Flight', label: 'Shake Flight' },
-];
+const AUTO_ADVANCE_MS = 5000;
 
-const HeroBanner = () => {
+function HeroBanner() {
+  const { width } = useWindowDimensions();
+  const cardWidth = Math.max(280, width - 40);
+  const scrollRef = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const indexRef = useRef(0);
+
+  const goTo = (nextIndex) => {
+    indexRef.current = nextIndex;
+    setCurrentIndex(nextIndex);
+    scrollRef.current?.scrollTo({
+      x: nextIndex * cardWidth,
+      animated: true,
+    });
+  };
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev === heroItems.length - 1 ? 0 : prev + 1));
-    }, 5000);
-    return () => clearInterval(timer);
-  }, []);
+      const nextIndex = (indexRef.current + 1) % heroItems.length;
+      goTo(nextIndex);
+    }, AUTO_ADVANCE_MS);
 
-  const moveLeft = () => {
-    setCurrentIndex((prev) => (prev === 0 ? heroItems.length - 1 : prev - 1));
+    return () => clearInterval(timer);
+  }, [cardWidth]);
+
+  const onScrollEnd = (event) => {
+    const nextIndex = Math.round(event.nativeEvent.contentOffset.x / cardWidth);
+    if (!Number.isNaN(nextIndex)) {
+      indexRef.current = nextIndex;
+      setCurrentIndex(nextIndex);
+    }
   };
 
-  const moveRight = () => {
-    setCurrentIndex((prev) => (prev === heroItems.length - 1 ? 0 : prev + 1));
+  const step = (direction) => {
+    const nextIndex =
+      direction === 'left'
+        ? (indexRef.current - 1 + heroItems.length) % heroItems.length
+        : (indexRef.current + 1) % heroItems.length;
+    goTo(nextIndex);
   };
 
   return (
-    <div className="hero-banner">
-      <div className="hero-content">
-        <h2>'Indulge in Happiness,<br/>Delivered Fresh!'</h2>
-      </div>
-      <div className="hero-carousel-wrapper" style={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <button onClick={moveLeft} style={{ position: 'absolute', left: '10%', zIndex: 10, background: 'rgba(255,255,255,0.3)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', color: 'white', fontWeight: 'bold', fontSize: '20px' }}>&lt;</button>
-        
-        <div className="hero-graphics" style={{ overflow: 'hidden', width: '100%', maxWidth: '400px' }}>
-          <div style={{ display: 'flex', width: '100%', transition: 'transform 0.5s ease-in-out', transform: `translateX(-${currentIndex * 100}%)` }}>
-            {heroItems.map((item, idx) => (
-              <div key={idx} style={{ minWidth: '100%', display: 'flex', justifyContent: 'center' }}>
-                <div className="hero-product-container">
-                  <div className="hero-product-circle liquid-glass">
-                    <img src={item.img} alt={item.alt} className="hero-product-img" />
-                  </div>
-                  <span style={{ fontWeight: 'bold', display: 'block', marginTop: '12px' }}>{item.label}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+    <View style={styles.wrapper}>
+      <Text style={styles.title}>Indulge in happiness, delivered fresh.</Text>
 
-        <button onClick={moveRight} style={{ position: 'absolute', right: '10%', zIndex: 10, background: 'rgba(255,255,255,0.3)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', color: 'white', fontWeight: 'bold', fontSize: '20px' }}>&gt;</button>
-      </div>
-    </div>
+      <View style={styles.carouselRow}>
+        <Pressable style={styles.arrow} onPress={() => step('left')}>
+          <Text style={styles.arrowText}>{'<'}</Text>
+        </Pressable>
+
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={onScrollEnd}
+          contentContainerStyle={styles.carouselTrack}
+          style={[styles.carousel, { width: cardWidth }]}
+        >
+          {heroItems.map((item) => (
+            <View key={item.id} style={[styles.slide, { width: cardWidth }]}>
+              <View style={styles.heroImageWrap}>
+                <Image source={item.image} style={styles.heroImage} resizeMode="cover" />
+              </View>
+              <Text style={styles.slideLabel}>{item.label}</Text>
+            </View>
+          ))}
+        </ScrollView>
+
+        <Pressable style={styles.arrow} onPress={() => step('right')}>
+          <Text style={styles.arrowText}>{'>'}</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.dots}>
+        {heroItems.map((item, index) => (
+          <View
+            key={item.id}
+            style={[styles.dot, index === currentIndex && styles.dotActive]}
+          />
+        ))}
+      </View>
+    </View>
   );
-};
+}
+
+const styles = StyleSheet.create({
+  wrapper: {
+    backgroundColor: palette.surface,
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: radius.xl,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
+    gap: spacing.md,
+  },
+  title: {
+    color: palette.textPrimary,
+    fontSize: 26,
+    lineHeight: 32,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  carouselRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  arrow: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.elevated,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  arrowText: {
+    color: palette.textPrimary,
+    fontWeight: '800',
+    fontSize: 16,
+  },
+  carousel: {
+    maxWidth: '100%',
+  },
+  carouselTrack: {
+    alignItems: 'center',
+  },
+  slide: {
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    gap: spacing.sm,
+  },
+  heroImageWrap: {
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: palette.accentSoft,
+    backgroundColor: '#0B1220',
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
+  },
+  slideLabel: {
+    color: palette.textPrimary,
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  dots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: palette.border,
+  },
+  dotActive: {
+    width: 24,
+    backgroundColor: palette.accentSoft,
+  },
+});
 
 export default HeroBanner;
