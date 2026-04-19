@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "Cake Forest",
+    "slug": "cake-apk",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "platforms": ["ios", "android", "web"],
+    "assetBundlePatterns": ["**/*"],
+    "web": {
+      "bundler": "metro"
+    },
+    "ios": {
+      "supportsTablet": true
+    }
+  }
+}
